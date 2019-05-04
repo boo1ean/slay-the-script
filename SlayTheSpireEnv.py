@@ -33,7 +33,7 @@ def get_text_decoration(config):
 
 class Card():
     def __init__(self, config):
-        self.config = config
+        self.config = dict(config)
         self.text_decoration = get_text_decoration(config)
 
     def effect(self):
@@ -172,9 +172,12 @@ class Enemy(Creature):
         self.max_hp = DEFAULT_ENEMY_HP
         self.block = DEFAULT_ENEMY_BLOCK
         self.action = Card(cards[1])
+        self.buff = 3
 
     def act(self):
-        return self.action.effect()
+        eff = self.action.effect()
+        eff['damage'] += self.buff
+        return eff
 
     def render(self):
         hp_bar = bold('%s ❤️ %s/%s' % (bold(self.name), red(self.hp), red(self.max_hp)))
