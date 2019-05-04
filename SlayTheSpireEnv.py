@@ -15,7 +15,7 @@ from fabulous.color import bold, magenta_bg, green_bg, red_bg, red, green, magen
 # - discard pile
 # - hand (10 cards)
 # - enemy intention
-# - current mana
+# - current energy
 
 with open('cards.json', 'r') as cards_file:
     cards = json.loads(cards_file.read())
@@ -35,8 +35,14 @@ class Card():
     def render(self):
         return self.text_decoration(self.config['name'])
 
+    def get_cost(self):
+        return self.config['cost']
+
+    cost = property(get_cost)
+
 DEFAULT_PALYER_HP = 70
-DEFAULT_PLAYER_MANA = 3
+DEFAULT_PLAYER_ENERGY = 3
+DEFAULT_PLAYER_BLOCK = 10
 DEFAULT_PLAYER_DRAW_RATE = 5
 
 class Player():
@@ -51,10 +57,13 @@ class Player():
         self.draw_pile = []
         self.hand = []
         self.draw_rate = DEFAULT_PLAYER_DRAW_RATE
+
         self.hp = DEFAULT_PALYER_HP
         self.max_hp = DEFAULT_PALYER_HP
-        self.mana = DEFAULT_PLAYER_MANA
-        self.max_mana = DEFAULT_PLAYER_MANA
+        self.energy = DEFAULT_PLAYER_ENERGY
+        self.max_energy = DEFAULT_PLAYER_ENERGY
+        self.block = DEFAULT_PLAYER_BLOCK
+
         self.shuffle_discard_pile_to_draw_pile()
 
 
@@ -84,26 +93,27 @@ class Player():
         self.hand = []
 
 
-    def try_play_card(self, index):
+    def play_card(self, index):
         # Card index is out of range
         if index >= len(self.hand):
             return None
 
         card = self.hand[index]
 
-        # Not enough mana
-        if card.cost > self.mana:
+        # Not enough energy
+        if card.cost > self.energy:
             return None
 
         # Actually play card
-        self.mana -= 1
+        self.energy -= card.cost
         self.discard_card_from_hand(index)
         return card.effect()
+
 
     def discard_card_from_hand(self, index):
         card = self.hand[index]
         del self.hand[index]
-        self.discard_pile += card
+        self.discard_pile += [card]
 
 
     # CLI render
@@ -113,15 +123,18 @@ class Player():
         discard_pile = list(map(lambda c: c.render(), self.discard_pile))
 
         columns = {}
-        columns["Draw pile (%d)" % len(draw_pile)] = draw_pile
-        columns["Hand (%d)" % len(hand)] = hand
-        columns["Discard pile (%d)" % len(discard_pile)] = discard_pile
-        deck_state = tabulate(columns, headers="keys")
+        columns['Draw pile (%d)' % len(draw_pile)] = draw_pile
+        columns['Hand (%d)' % len(hand)] = hand
+        columns['Discard pile (%d)' % len(discard_pile)] = discard_pile
+        deck_state = tabulate(columns, headers='keys')
 
-        hp_bar = bold('Health: %s/%s' % (red(self.hp), red(self.max_hp)))
-        mana_bar = bold('Mana: %s/%s' % (blue(self.mana), blue(self.max_mana)))
+        hp_bar = bold('❤️ %s/%s' % (red(self.hp), red(self.max_hp)))
+        if self.block > 0:
+            hp_bar += ' 🛡️ %s' % bold(self.block)
 
-        return '%s\n%s\n\n%s' % (hp_bar, mana_bar, deck_state)
+        energy_bar = bold('⚡%s/%s' % (blue(self.energy), blue(self.max_energy)))
+
+        return '%s\n%s\n\n%s' % (hp_bar, energy_bar, deck_state)
 
 
 DEFAULT_ENEMY_HP = 52
@@ -140,7 +153,7 @@ class Battle():
 
 p = Player()
 p.draw(5)
-p.draw(5)
-p.discard_hand()
-p.draw(5)
+p.play_card(0)
+p.play_card(0)
+p.play_card(0)
 print(p.render())
