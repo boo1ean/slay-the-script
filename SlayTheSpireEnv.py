@@ -3,6 +3,13 @@ import random
 import logging
 from tabulate import tabulate
 from fabulous.color import bold, magenta_bg, green_bg, red_bg, red, green, magenta, blue
+from getch import getch
+from subprocess import call
+from time import sleep
+import os
+
+def clear_screen():
+    _ = call('clear' if os.name =='posix' else 'cls')
 
 # Actions space:
 # - play card 0,1,2,3,4,5,6,7,8,9
@@ -46,12 +53,13 @@ DEFAULT_PLAYER_BLOCK = 10
 DEFAULT_PLAYER_DRAW_RATE = 5
 
 class Player():
-    # default deck is 6 strikes + 6 defends
+    # default deck is 6 defends + 6 strikes
     default_deck = [Card(cards[0])] * 6 + [Card(cards[1])] * 6
 
     # Initiall put whole deck to discard pile
     # and after initialization shuffle it to the draw pile
-    def __init__(self, deck = default_deck):
+    def __init__(self, deck = default_deck, name = 'Naive player'):
+        self.name = name
         self.deck = deck
         self.discard_pile = deck
         self.draw_pile = []
@@ -116,44 +124,85 @@ class Player():
         self.discard_pile += [card]
 
 
+    def inc_block(self, block):
+        self.block += block
+
+
     # CLI render
     def render(self):
         draw_pile = list(map(lambda c: c.render(), self.draw_pile))
-        hand = list(map(lambda c: c.render(), self.hand))
+        # hand = list(map(lambda c: c.render(), enumerate(self.hand))
+        hand = ['%d) %s' % (i, c.render()) for i, c in enumerate(self.hand)]
         discard_pile = list(map(lambda c: c.render(), self.discard_pile))
 
         columns = {}
-        columns['Draw pile (%d)' % len(draw_pile)] = draw_pile
-        columns['Hand (%d)' % len(hand)] = hand
-        columns['Discard pile (%d)' % len(discard_pile)] = discard_pile
-        deck_state = tabulate(columns, headers='keys')
+        columns[bold('Hand (%d)' % len(hand))] = hand
+        columns[''] = ['\t\t\t']
+        columns[bold('Draw pile (%d)' % len(draw_pile))] = draw_pile
+        columns[bold('Discard pile (%d)' % len(discard_pile))] = discard_pile
+        deck_state = tabulate(columns, headers='keys', tablefmt="plain")
 
-        hp_bar = bold('❤️ %s/%s' % (red(self.hp), red(self.max_hp)))
+        status_bar = bold('%s ❤️ %s/%s ⚡%s/%s' % (bold(self.name), red(self.hp), red(self.max_hp), blue(self.energy), blue(self.max_energy)))
         if self.block > 0:
-            hp_bar += ' 🛡️ %s' % bold(self.block)
+            status_bar += ' 🛡️ %s' % bold(self.block)
 
-        energy_bar = bold('⚡%s/%s' % (blue(self.energy), blue(self.max_energy)))
-
-        return '%s\n%s\n\n%s' % (hp_bar, energy_bar, deck_state)
+        return '%s\n\n%s' % (status_bar, deck_state)
 
 
 DEFAULT_ENEMY_HP = 52
 
 class Enemy():
     def __init__(self):
+        self.name = 'Script-killer'
         self.hp = DEFAULT_ENEMY_HP
         self.max_hp = DEFAULT_ENEMY_HP
+        self.action = Card(cards[1])
 
+    def act(self):
+        return self.action.effect()
+
+    def render(self):
+        hp_bar = bold('%s ❤️ %s/%s' % (bold(self.name), red(self.hp), red(self.max_hp)))
+        intent = 'Going to deal %s %s' % (red(self.action.effect()['damage']), red('damage'))
+
+        return '%s\n%s' % (hp_bar, intent)
 
 class Battle():
     def __init__(self, player, enemy):
         self.player = player
         self.enemy = enemy
 
+    def render(self):
+        return '%s\n\n\n%s' % (self.player.render(), self.enemy.render())
+
+    def start(self):
+        self.player.draw(5)
+
+# class UserActor():
+    # def __init__(self):
+
 
 p = Player()
-p.draw(5)
-p.play_card(0)
-p.play_card(0)
-p.play_card(0)
-print(p.render())
+e = Enemy()
+b = Battle(player = p, enemy = e)
+
+clear_screen()
+done = False
+b.start()
+while not done:
+    print(b.render())
+    ch = getch()
+    clear_screen()
+    print(ch)
+
+
+
+# p.draw(5)
+# p.play_card(0)
+# p.play_card(0)
+# p.play_card(0)
+# print(p.render())
+
+# print(e.act())
+
+
