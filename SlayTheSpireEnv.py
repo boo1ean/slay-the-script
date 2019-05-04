@@ -2,7 +2,7 @@ import json
 import random
 import logging
 from tabulate import tabulate
-from fabulous.color import bold, magenta_bg, green_bg, red_bg, red, green, magenta
+from fabulous.color import bold, magenta_bg, green_bg, red_bg, red, green, magenta, blue
 
 # Actions space:
 # - play card 0,1,2,3,4,5,6,7,8,9
@@ -29,6 +29,9 @@ class Card():
         self.config = config
         self.text_decoration = get_text_decoration(config)
 
+    def effect(self):
+        return self.config
+
     def render(self):
         return self.text_decoration(self.config['name'])
 
@@ -49,7 +52,9 @@ class Player():
         self.hand = []
         self.draw_rate = DEFAULT_PLAYER_DRAW_RATE
         self.hp = DEFAULT_PALYER_HP
+        self.max_hp = DEFAULT_PALYER_HP
         self.mana = DEFAULT_PLAYER_MANA
+        self.max_mana = DEFAULT_PLAYER_MANA
         self.shuffle_discard_pile_to_draw_pile()
 
 
@@ -79,6 +84,28 @@ class Player():
         self.hand = []
 
 
+    def try_play_card(self, index):
+        # Card index is out of range
+        if index >= len(self.hand):
+            return None
+
+        card = self.hand[index]
+
+        # Not enough mana
+        if card.cost > self.mana:
+            return None
+
+        # Actually play card
+        self.mana -= 1
+        self.discard_card_from_hand(index)
+        return card.effect()
+
+    def discard_card_from_hand(self, index):
+        card = self.hand[index]
+        del self.hand[index]
+        self.discard_pile += card
+
+
     # CLI render
     def render(self):
         draw_pile = list(map(lambda c: c.render(), self.draw_pile))
@@ -89,14 +116,20 @@ class Player():
         columns["Draw pile (%d)" % len(draw_pile)] = draw_pile
         columns["Hand (%d)" % len(hand)] = hand
         columns["Discard pile (%d)" % len(discard_pile)] = discard_pile
+        deck_state = tabulate(columns, headers="keys")
 
-        return tabulate(columns, headers="keys")
+        hp_bar = bold('Health: %s/%s' % (red(self.hp), red(self.max_hp)))
+        mana_bar = bold('Mana: %s/%s' % (blue(self.mana), blue(self.max_mana)))
+
+        return '%s\n%s\n\n%s' % (hp_bar, mana_bar, deck_state)
+
 
 DEFAULT_ENEMY_HP = 52
 
 class Enemy():
     def __init__(self):
         self.hp = DEFAULT_ENEMY_HP
+        self.max_hp = DEFAULT_ENEMY_HP
 
 
 class Battle():
