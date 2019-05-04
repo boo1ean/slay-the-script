@@ -47,18 +47,29 @@ class Card():
 
     cost = property(get_cost)
 
+class Creature():
+    def is_dead(self):
+        return self.hp <= 0
+
+    def apply_damage(self, amount):
+        if self.block:
+            amount -= self.block
+        if amount > 0:
+            self.hp -= amount
+
+
 DEFAULT_PALYER_HP = 70
 DEFAULT_PLAYER_ENERGY = 3
-DEFAULT_PLAYER_BLOCK = 10
+DEFAULT_PLAYER_BLOCK = 0
 DEFAULT_PLAYER_DRAW_RATE = 5
 
-class Player():
+class Player(Creature):
     # default deck is 6 defends + 6 strikes
     default_deck = [Card(cards[0])] * 6 + [Card(cards[1])] * 6
 
     # Initiall put whole deck to discard pile
     # and after initialization shuffle it to the draw pile
-    def __init__(self, deck = default_deck, name = 'Naive player'):
+    def __init__(self, deck = default_deck, name = 'Naive-player'):
         self.name = name
         self.deck = deck
         self.discard_pile = deck
@@ -74,14 +85,12 @@ class Player():
 
         self.shuffle_discard_pile_to_draw_pile()
 
-
     # Shuffle cards in discard pile
     # and move it to draw pile
     def shuffle_discard_pile_to_draw_pile(self):
         random.shuffle(self.discard_pile)
         self.draw_pile = self.discard_pile
         self.discard_pile = []
-
 
     # Put DRAW_RATE cards from draw pile into hand
     # if there are not enough cards for draw session
@@ -94,12 +103,16 @@ class Player():
             self.shuffle_discard_pile_to_draw_pile()
             self.draw(cards_to_draw - len(self.hand))
 
-
     # Move cards from hand to discard pile
     def discard_hand(self):
         self.discard_pile += self.hand
         self.hand = []
 
+    def new_turn(self):
+        self.discard_hand()
+        self.draw(self.draw_rate)
+        self.energy = self.max_energy
+        self.block = DEFAULT_PLAYER_BLOCK
 
     def play_card(self, index):
         # Card index is out of range
@@ -132,7 +145,7 @@ class Player():
     def render(self):
         draw_pile = list(map(lambda c: c.render(), self.draw_pile))
         # hand = list(map(lambda c: c.render(), enumerate(self.hand))
-        hand = ['%d) %s' % (i, c.render()) for i, c in enumerate(self.hand)]
+        hand = ['%d) %s' % (i + 1, c.render()) for i, c in enumerate(self.hand)]
         discard_pile = list(map(lambda c: c.render(), self.discard_pile))
 
         columns = {}
@@ -150,12 +163,14 @@ class Player():
 
 
 DEFAULT_ENEMY_HP = 52
+DEFAULT_ENEMY_BLOCK = 0
 
-class Enemy():
-    def __init__(self):
-        self.name = 'Script-killer'
+class Enemy(Creature):
+    def __init__(self, name = 'Script-killer'):
+        self.name = name
         self.hp = DEFAULT_ENEMY_HP
         self.max_hp = DEFAULT_ENEMY_HP
+        self.block = DEFAULT_ENEMY_BLOCK
         self.action = Card(cards[1])
 
     def act(self):
@@ -178,6 +193,39 @@ class Battle():
     def start(self):
         self.player.draw(5)
 
+    def step(self, action):
+        if action == 'e':
+            return self.end_turn()
+        try:
+            index = int(action)
+            effect = self.player.play_card(index - 1)
+            if effect:
+                self.apply_effect(self.player, self.enemy, effect)
+        except ValueError:
+            return None
+
+    def apply_effect(self, source, target, effect):
+        if 'damage' in effect:
+            target.apply_damage(effect['damage'])
+
+        if 'block' in effect:
+            source.inc_block(effect['block'])
+
+        return None
+
+    def end_turn(self):
+        enemy_effect = self.enemy.act()
+        self.apply_effect(self.enemy, self.player, enemy_effect)
+        self.player.new_turn()
+
+    def has_winner(self):
+        if self.player.is_dead():
+            return self.enemy
+        if self.enemy.is_dead():
+            return self.player
+        return None
+
+
 # class UserActor():
     # def __init__(self):
 
@@ -191,9 +239,13 @@ done = False
 b.start()
 while not done:
     print(b.render())
-    ch = getch()
+    action = getch()
+    b.step(action)
     clear_screen()
-    print(ch)
+    winner = b.has_winner()
+    if winner:
+        done = True
+        print('Winner is %s' % bold(winner.name))
 
 
 
