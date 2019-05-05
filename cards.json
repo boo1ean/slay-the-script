@@ -1,0 +1,21 @@
+[
+	{
+		"id": 1,
+		"name": "Defend",
+		"block": 5,
+		"cost": 1
+	},
+	{
+		"id": 2,
+		"name": "Strike",
+		"damage": 6,
+		"cost": 1
+	},
+	{
+		"id": 3,
+		"name": "Iron wave",
+		"block": 5,
+		"damage": 5,
+		"cost": 1
+	}
+]
