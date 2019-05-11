@@ -7,7 +7,8 @@ from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO2
 
-from slay_the_script.env import SlayTheScriptEnv
+# from slay_the_script.env import SlayTheScriptEnv
+from slay_the_script_env import SlayTheScriptEnv
 
 from subprocess import call
 from time import sleep
@@ -19,20 +20,20 @@ env = SlayTheScriptEnv()
 env = DummyVecEnv([lambda: env])
 
 model = PPO2(MlpPolicy, env, verbose=0)
-model.learn(total_timesteps=100_000)
+model.learn(total_timesteps=1000)
 
-while True:
-    obs = env.reset()
-    clear_screen()
-    done = False
-    action = None
-    while not done:
-        print('Previous action: %s' % action)
-        print(env.render())
-        getch()
-        action, _states = model.predict(obs)
-        obs, rewards, done, info = env.step(action)
-        clear_screen()
-        if done:
-            print(info)
-            getch()
+# while True:
+    # obs = env.reset()
+    # clear_screen()
+    # done = False
+    # action = None
+    # while not done:
+        # print('Previous action: %s' % action)
+        # print(env.render())
+        # getch()
+        # action, _states = model.predict(obs)
+        # obs, rewards, done, info = env.step(action)
+        # clear_screen()
+        # if done:
+            # print(info)
+            # getch()
